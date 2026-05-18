@@ -199,24 +199,27 @@ footer p { margin: 4px 0; }
     <p class="sub">Pick a preset or define your own. Owners are the addresses that can propose, confirm and execute transactions. The threshold is the number of confirmations required to execute.</p>
 
     <div class="tabs" role="tablist">
-      <div class="tab active" data-tab="1of2" role="tab">1&nbsp;of&nbsp;2<span class="desc">2 keys, 1 confirms</span></div>
-      <div class="tab" data-tab="2of3" role="tab">2&nbsp;of&nbsp;3<span class="desc">3 keys, 2 confirm</span></div>
+      <div class="tab active" data-tab="2of3" role="tab">2&nbsp;of&nbsp;3<span class="desc">3 keys, 2 confirm</span></div>
+      <div class="tab" data-tab="3of5" role="tab">3&nbsp;of&nbsp;5<span class="desc">5 keys, 3 confirm</span></div>
       <div class="tab" data-tab="custom" role="tab">Custom<span class="desc">N&nbsp;of&nbsp;M</span></div>
     </div>
 
     <div class="panel">
 
-      <div data-pane="1of2">
-        <div class="field"><label>Owner&nbsp;#1 address</label><input type="text" data-input="o1a-1" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
-        <div class="field"><label>Owner&nbsp;#2 address</label><input type="text" data-input="o1a-2" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
-        <div class="summary">Deploys with <b>2 owners</b>, threshold <b>1</b>. Either owner can move funds alone.</div>
-      </div>
-
-      <div data-pane="2of3" style="display:none">
+      <div data-pane="2of3">
         <div class="field"><label>Owner&nbsp;#1 address</label><input type="text" data-input="o2a-1" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
         <div class="field"><label>Owner&nbsp;#2 address</label><input type="text" data-input="o2a-2" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
         <div class="field"><label>Owner&nbsp;#3 address</label><input type="text" data-input="o2a-3" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
-        <div class="summary">Deploys with <b>3 owners</b>, threshold <b>2</b>. Any 2 owners must agree to move funds.</div>
+        <div class="summary">Deploys with <b>3 owners</b>, threshold <b>2</b>. Any 2 owners must agree to move funds. Lose 1 key, you're still safe.</div>
+      </div>
+
+      <div data-pane="3of5" style="display:none">
+        <div class="field"><label>Owner&nbsp;#1 address</label><input type="text" data-input="o3a-1" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
+        <div class="field"><label>Owner&nbsp;#2 address</label><input type="text" data-input="o3a-2" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
+        <div class="field"><label>Owner&nbsp;#3 address</label><input type="text" data-input="o3a-3" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
+        <div class="field"><label>Owner&nbsp;#4 address</label><input type="text" data-input="o3a-4" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
+        <div class="field"><label>Owner&nbsp;#5 address</label><input type="text" data-input="o3a-5" placeholder="0x..." spellcheck="false" autocomplete="off"></div>
+        <div class="summary">Deploys with <b>5 owners</b>, threshold <b>3</b>. Any 3 owners must agree. Lose up to 2 keys, funds are still safe.</div>
       </div>
 
       <div data-pane="custom" style="display:none">
@@ -737,23 +740,26 @@ contract EthMultiSig {
   // ------------------------------------------------------------
   // Collect deploy params for the active tab
   // ------------------------------------------------------------
-  var state = { active: '1of2' };
+  var state = { active: '2of3' };
 
   function readOwners() {
     var owners = [], threshold = 1;
-    if (state.active === '1of2') {
-      owners = [
-        document.querySelector('[data-input="o1a-1"]').value.trim(),
-        document.querySelector('[data-input="o1a-2"]').value.trim()
-      ];
-      threshold = 1;
-    } else if (state.active === '2of3') {
+    if (state.active === '2of3') {
       owners = [
         document.querySelector('[data-input="o2a-1"]').value.trim(),
         document.querySelector('[data-input="o2a-2"]').value.trim(),
         document.querySelector('[data-input="o2a-3"]').value.trim()
       ];
       threshold = 2;
+    } else if (state.active === '3of5') {
+      owners = [
+        document.querySelector('[data-input="o3a-1"]').value.trim(),
+        document.querySelector('[data-input="o3a-2"]').value.trim(),
+        document.querySelector('[data-input="o3a-3"]').value.trim(),
+        document.querySelector('[data-input="o3a-4"]').value.trim(),
+        document.querySelector('[data-input="o3a-5"]').value.trim()
+      ];
+      threshold = 3;
     } else {
       customWrap.querySelectorAll('input').forEach(function(i){ owners.push(i.value.trim()); });
       threshold = Math.max(1, Math.min(owners.length, parseInt(cN.value || '2', 10)));
