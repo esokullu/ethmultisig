@@ -267,6 +267,7 @@ footer p { margin: 4px 0; }
       </button>
       <button class="btn" id="btn-wallet">Deploy via Wallet (MetaMask)</button>
       <button class="btn secondary" id="btn-copy">Copy contract</button>
+      <button class="btn secondary" id="btn-audit">Have ChatGPT audit</button>
       <select class="select" id="net">
         <option value="0x1">Ethereum Mainnet</option>
         <option value="0xaa36a7" selected>Sepolia testnet</option>
@@ -826,7 +827,7 @@ contract EthMultiSig {
       // Continue without an alert — Remix is for power users
     }
     var url = 'https://remix.ethereum.org/?#code=' + base64UrlEncode(SOURCE) + '&autoCompile=true&optimize=true&runs=200&evmVersion=paris&language=Solidity&version=soljson-v0.8.26+commit.8a97fa7a.js';
-    setStatus('Opening Remix in a new tab... Once compiled, scroll to the <b>Deploy &amp; Run</b> panel and enter your owners <code>[0x..., 0x...]</code> and threshold, then click Deploy.', 'success');
+    setStatusText('Opening Remix in a new tab... Once compiled, scroll to the Deploy & Run panel and enter your owners [0x..., 0x...] and threshold, then click Deploy.', 'success');
     window.open(url, '_blank', 'noopener');
   });
 
@@ -837,28 +838,28 @@ contract EthMultiSig {
     var btn = this;
     var params = readOwners();
     var err = validate(params);
-    if (err) { setStatus(err, 'error'); return; }
+    if (err) { setStatusText(err, 'error'); return; }
 
     if (typeof window.ethereum === 'undefined') {
-      setStatus('No wallet detected. Install MetaMask (or any EIP-1193 wallet) and refresh, or use the Remix deploy button.', 'error');
+      setStatusText('No wallet detected. Install MetaMask (or any EIP-1193 wallet) and refresh, or use the Remix deploy button.', 'error');
       return;
     }
 
     var targetChain = document.getElementById('net').value;
     try {
       btn.disabled = true;
-      setStatus('Requesting wallet connection...');
+      setStatusText('Requesting wallet connection...');
 
       var accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       var from = accounts[0];
 
       var currentChain = await window.ethereum.request({ method: 'eth_chainId' });
       if (currentChain !== targetChain) {
-        setStatus('Switching wallet to selected network...');
+        setStatusText('Switching wallet to selected network...');
         try {
           await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: targetChain }] });
         } catch (switchErr) {
-          setStatus('Could not switch network: ' + (switchErr.message || switchErr) + '. Switch manually and try again.', 'error');
+          setStatusText('Could not switch network: ' + (switchErr.message || switchErr) + '. Switch manually and try again.', 'error');
           btn.disabled = false; return;
         }
       }
@@ -866,15 +867,15 @@ contract EthMultiSig {
       var encodedArgs = encodeConstructor(params.owners, params.threshold);
       var data = BYTECODE + encodedArgs;
 
-      setStatus('Sending deployment transaction... confirm in your wallet.');
+      setStatusText('Sending deployment transaction... confirm in your wallet.');
       var txHash = await window.ethereum.request({
         method: 'eth_sendTransaction',
         params: [{ from: from, data: data }]
       });
       var explorer = explorerForChain(targetChain);
-      setStatus('Deployment submitted! Tx: <a href="' + explorer + '/tx/' + txHash + '" target="_blank" rel="noopener">' + txHash + '</a><br>Once mined, the contract address will be visible on the explorer. <b>Save it</b> &mdash; that\'s your multisig.', 'success');
+      setStatusWithTxLink('Deployment submitted! Tx: ', explorer + '/tx/' + txHash, txHash, 'success');
     } catch (e) {
-      setStatus('Deploy failed: ' + (e.message || e), 'error');
+      setStatusText('Deploy failed: ' + (e.message || e), 'error');
     } finally {
       btn.disabled = false;
     }
@@ -886,18 +887,47 @@ contract EthMultiSig {
   document.getElementById('btn-copy').addEventListener('click', async function() {
     try {
       await navigator.clipboard.writeText(SOURCE);
-      setStatus('Contract source copied to clipboard.', 'success');
+      setStatusText('Contract source copied to clipboard.', 'success');
     } catch (e) {
-      setStatus('Could not copy automatically. Select the code box and copy manually.', 'error');
+      setStatusText('Could not copy automatically. Select the code box and copy manually.', 'error');
     }
+  });
+
+  // ------------------------------------------------------------
+  // ChatGPT audit helper
+  // ------------------------------------------------------------
+  document.getElementById('btn-audit').addEventListener('click', async function() {
+    var prompt = 'Audit this Solidity multisig contract for security risks. Focus on reentrancy, auth flaws, replay/double-exec issues, edge cases, and operational risks.\\n\\n' + SOURCE;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setStatusText('Audit prompt copied. Opening ChatGPT in a new tab; paste and ask for a full audit.', 'success');
+    } catch (e) {
+      setStatusText('Opening ChatGPT in a new tab. Copy the contract and ask for a security audit manually.', 'success');
+    }
+    window.open('https://chatgpt.com/', '_blank', 'noopener');
   });
 
   // ------------------------------------------------------------
   // Helpers
   // ------------------------------------------------------------
-  function setStatus(msg, kind) {
+  function setStatusText(msg, kind) {
     var el = document.getElementById('status');
-    el.innerHTML = msg;
+    el.textContent = msg;
+    el.className = 'notice' + (kind ? ' ' + kind : '');
+  }
+  function setStatusWithTxLink(prefix, href, label, kind) {
+    var el = document.getElementById('status');
+    el.textContent = '';
+    var text = document.createTextNode(prefix);
+    var link = document.createElement('a');
+    link.href = href;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = label;
+    var suffix = document.createTextNode(' — once mined, save the deployed contract address.');
+    el.appendChild(text);
+    el.appendChild(link);
+    el.appendChild(suffix);
     el.className = 'notice' + (kind ? ' ' + kind : '');
   }
   function explorerForChain(id) {
